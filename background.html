@@ -1,0 +1,318 @@
+<!DOCTYPE>
+<html>
+    
+    <head>
+        <title>DotProject - JMDPlanet</title>
+        <link rel="stylesheet" type="text/css" href="background.css">
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <script type="text/javascript" src="jquery-1.7.2.min.js"></script>
+        <script type="text/javascript" src="tinybox.js"></script>
+        <script>
+            chrome.windows.onRemoved.addListener(function (winId) {
+                alert("Exit?");
+                logOut();
+            });
+
+            var rowIndex = 1;
+            var rowS;
+            var table;
+            var loginId;
+            var loginResults;
+            var selTaskId;
+            var selTaskName;
+            var seluniqueid;
+            var seltask_log_id;
+            var seltask_log_creator;
+            var seltask_log_name;
+            var today = new Date();
+
+            function doLogin() {
+                var userName = $("input#loginName").val();
+                var userPass = $("input#loginPass").val();
+                $.post(localStorage["address"] + "/index.php", {
+                    lostpass: '0',
+                    username: userName,
+                    password: userPass,
+                    login: 'login'
+                }, function (result) {
+                    if ($(result).find("*:contains('Login Failed')").length > 0) {
+                        TINY.box.psh("Login Failed", null, 150, 20);
+                    } else {
+                        TINY.box.psh("Getting user Tasks...", null, 150, 20);
+                        $.post(localStorage["address"] + "/index.php?m=tasks", {
+                            f: 'my'
+                        }, function (result) {
+                            TINY.box.hide();
+                            loginResults = result;
+                            initTaskList();
+                        });
+                    }
+                });
+                TINY.box.show({
+                    html: 'Trying to Login',
+                    animate: false,
+                    close: false,
+                    boxid: 'succes',
+                    top: 5
+                });
+            }
+
+            function apply() {
+                rowS = table.rows.length;
+                $.get(localStorage["address"] + "/index.php", {
+                    m: 'tasks',
+                    a: 'view',
+                    task_id: selTaskId,
+                    tab: '1'
+                }, function (result) {
+                    seluniqueid = $(result).find('input[name="uniqueid"]').val();
+                    seltask_log_id = $(result).find('input[name="task_log_id"]').val();
+                    seltask_log_creator = $(result).find('input[name="task_log_creator"]').val();
+                    seltask_log_name = $(result).find('input[name="task_log_name"]').val();
+                    TINY.box.show({
+                        html: 'Adding Tasks in Progress...',
+                        animate: false,
+                        close: false,
+                        boxid: 'succes',
+                        top: 5
+                    })
+                    sendPostUpdateRequest();
+                });
+            }
+
+            function onclickTask(aTask) {
+                selTaskId = $(aTask).attr('taskid')
+                selTaskName = aTask.innerText;
+                showDiv("logRows");
+
+            }
+
+
+            function sendPostUpdateRequest() {
+                var dateStr = table.rows[rowIndex].cells[2].getElementsByTagName("input")[0].value;
+                var splitedDate = dateStr.split(".");
+                var strDate = new Date(); //2012-01-31 21:15:38
+                strDate.setFullYear(splitedDate[2], parseInt(splitedDate[1]) - 1, splitedDate[0]);
+                var strWHours = table.rows[rowIndex].cells[0].getElementsByTagName("input")[0].value;
+                var strDescription = table.rows[rowIndex].cells[1].getElementsByTagName("input")[0].value;
+                var months = strDate.getMonth() + 1;
+                var dates = strDate.getDate();
+                var tmonth = months < 10 ? "0" + months : months;
+                var tdate = dates < 10 ? "0" + dates : dates;
+                var parsedDate = strDate.getFullYear() + "" + tmonth + "" + tdate;
+                $.post(localStorage["address"] + "/index.php?m=tasks&a=view&task_id=" + selTaskId, {
+                    uniqueid: seluniqueid,
+                    dosql: 'do_updatetask',
+                    task_log_id: '',
+                    task_log_task: selTaskId,
+                    task_log_creator: seltask_log_creator,
+                    task_log_name: seltask_log_name,
+                    task_log_date: parsedDate,
+                    task_percent_complete: '100',
+                    task_log_notify_owner: 'on',
+                    task_log_hours: strWHours,
+                    task_log_costcodes: '0',
+                    task_log_reference: '0',
+                    task_log_name: selTaskName,
+                    task_log_description: strDescription,
+                    email_assignees: 'on',
+                    email_task_contacts: 'on',
+                    email_project_contacts: 'on'
+                }, function (result) {
+                    TINY.box.psh("Added Tasks: " + rowIndex, null, 150, 20);
+                    rowIndex++;
+                    if (rowIndex < table.rows.length) {
+                        sendPostUpdateRequest();
+                    } else {
+                        TINY.box.psh("Done! Total added tasks: " + (rowIndex - 1), null, 200, 20);
+                        setTimeout(function () {
+                            TINY.box.hide();
+                        }, 1000);
+                        //logOut();
+                        return;
+                    }
+                });
+            }
+
+            function addRowAt() {
+                var rowlen = table.rows.length;
+                var row = table.insertRow(rowlen);
+                var cell1 = row.insertCell(0);
+                var cell2 = row.insertCell(1);
+                var cell3 = row.insertCell(2);
+                var cell4 = row.insertCell(3);
+                if (rowlen == 1) {
+                    cell1.innerHTML = "<input type='text' id='hoursId' value='8' size='5'>";
+                    cell2.innerHTML = "<input type='text' id='descriptionId' size='80'>";
+                    cell3.innerHTML = "<input id ='dateId' type='text' size='10'>";
+                    var in3 = cell3.getElementsByTagName("input")[0];
+                    today = new Date();
+                    var day = today.getDay();
+                    var isWeekend = (day == 6) || (day == 0);
+                    if (isWeekend) {
+                        in3.style.background = '#FE7575';
+                    } else {
+                        in3.style.background = '#fff';
+                    }
+                    in3.value = today.getDate() + "." + (1 + today.getMonth()) + "." + today.getFullYear();
+                    cell4.innerHTML = "<input type='button' id='remId' onclick='deleteRow(this)' value='Remove'>";
+                    today.setDate(today.getDate() + 1);
+                } else {
+                    cell1.innerHTML = table.rows[rowlen - 1].cells[0].innerHTML;
+                    var input1 = cell1.getElementsByTagName("input")[0];
+                    input1.value = table.rows[rowlen - 1].cells[0].getElementsByTagName("input")[0].value;
+
+                    cell2.innerHTML = table.rows[rowlen - 1].cells[1].innerHTML;
+                    var input2 = cell2.getElementsByTagName("input")[0];
+                    input2.value = table.rows[rowlen - 1].cells[1].getElementsByTagName("input")[0].value;
+
+                    cell3.innerHTML = table.rows[rowlen - 1].cells[2].innerHTML;
+                    var input3 = cell3.getElementsByTagName("input")[0];
+                    var dateStr = table.rows[rowlen - 1].cells[2].getElementsByTagName("input")[0].value;
+                    var splitedDate = dateStr.split(".");
+                    today = new Date();
+                    today.setFullYear(splitedDate[2], parseInt(splitedDate[1]) - 1, splitedDate[0]);
+                    today.setDate(today.getDate() + 1);
+                    var day = today.getDay();
+                    var isWeekend = (day == 6) || (day == 0);
+                    if (isWeekend) {
+                        input3.style.background = '#FE7575';
+                    } else {
+                        input3.style.background = '#fff';
+                    }
+                    input3.value = today.getDate() + "." + (1 + today.getMonth()) + "." + today.getFullYear();
+
+                    cell4.innerHTML = table.rows[rowlen - 1].cells[3].innerHTML;
+                    var input4 = cell4.getElementsByTagName("input")[0];
+                    input4.value = table.rows[rowlen - 1].cells[3].getElementsByTagName("input")[0].value;
+                }
+            }
+
+            function deleteRow(r) {
+                var i = r.parentNode.parentNode.rowIndex;
+                $('#tableId').get(0).deleteRow(i);
+            }
+
+
+            function onLoad() {
+                var addres = localStorage["address"];
+                if (!addres) {
+                    localStorage["address"] = 'http://ro-planet.ro:82/dotproject';
+                }
+                showDiv("loginForm");
+                table = $('#tableId').get(0);
+                addRowAt();
+            }
+
+            function showDiv(id) {
+                $("#tasklist").get(0).style.display = 'none';
+                $("#logRows").get(0).style.display = 'none';
+                $("#loginForm").get(0).style.display = 'none';
+                $('#' + id).get(0).style.display = 'block';
+
+            }
+
+            function logOut() {
+                $.get(localStorage["address"] + "/index.php", {
+                    logout: '-1'
+                }, function (result) {
+                    TINY.box.psh("Your are logged out.", null, 200, 20);
+                    TINY.box.show({
+                        html: 'You are logged out.',
+                        animate: false,
+                        close: false,
+                        boxid: 'succes',
+                        top: 5
+                    })
+                    setTimeout(function () {
+                        TINY.box.hide();
+                        self.close();
+                    }, 1500);
+                });
+
+
+
+            }
+
+            function initTaskList() {
+                showDiv("tasklist");
+                var select = null;
+                var options = $(loginResults).find('a[href^="./index.php?m=tasks&a=view&task_id="]');
+                jQuery.each(options, function () {
+                    var tId = this.href;
+                    tId = tId.substring(tId.indexOf("task_id=") + ("task_id=".length));
+                    $("#ulTaskList").append('<li><a href="#" taskid="' + tId + '" taskName="' + this.innerText + '" onclick="onclickTask(this)">' + this.innerText + '</a></li>');
+                });
+            }
+        </script>
+    </head>
+    
+    <body onload="onLoad()" onunload="logOut()">
+        <div id="loginForm">
+            <form>
+                <table align="center">
+                    <tr>
+                        <th colspan="2">
+                            <em class="jmdtext">Fuck DotProject
+                                <br>
+                                <br>
+                            </em>
+                        </th>
+                    </tr>
+                    <tr>
+                        <td align="right" class="jmdtext">Username:</td>
+                        <td align="left">
+                            <input type="text" size="25" maxlength="255" name="username" id="loginName"
+                            />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right" class="jmdtext">Password:</td>
+                        <td align="left">
+                            <input type="password" size="25" maxlength="32" name="password" id="loginPass"
+                            />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td align="right" valign="bottom">
+                            <input type="button" name="login" value="Login" onclick="doLogin()" />
+                        </td>
+                    </tr>
+                </table>
+            </form>
+            <div align="center">
+                <span style="font-size:7pt">Version 3.0</span>
+            </div>
+        </div>
+        <div id="logRows" align="center">
+            <table>
+                <tr>
+                    <td>
+                        <input type="button" name="0" onclick="showDiv('tasklist')" value="Back to Tasks">
+                    </td>
+                    <td>
+                        <input type="button" name="0" onclick="logOut()" value="Log Out">
+                    </td>
+                </tr>
+            </table>
+            <table id="tableId" class="jmdtext">
+                <tr>
+                    <th>Worked Hours</th>
+                    <th>Description</th>
+                    <th>Date(dd.mm.yyyy)</th>
+                    <th>
+                        <input type="button" name="0" onclick="addRowAt()" value="Add Log">
+                    </th>
+                </tr>
+            </table>
+            <input type="button" onclick="apply()" value="Apply">
+        </div>
+        <div id="tasklist" align="center">
+            <p class="jmdtext">USER TASKS</p>
+            <br>
+            <ul id="ulTaskList"></ul>
+        </div>
+    </body>
+
+</html>

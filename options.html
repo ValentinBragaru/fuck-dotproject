@@ -1,0 +1,51 @@
+<html>
+<head><title>My Test Extension Options</title>
+<link rel="stylesheet" type="text/css" href="background.css">
+ <link rel="stylesheet" type="text/css" href="style.css">
+        <script type="text/javascript" src="jquery-1.7.2.min.js"></script>
+        <script type="text/javascript" src="tinybox.js"></script>
+</head>
+<script type="text/javascript">
+// Saves options to localStorage.
+function save_options() {
+  var dotProjAddres = $("input#address").val();
+  localStorage["address"] = dotProjAddres;
+  // Update status to let user know options were saved.
+  TINY.box.show({
+                        html: 'Otions Saved.',
+                        animate: false,
+                        close: false,
+                        boxid: 'succes',
+                        top: 5
+                    })
+  setTimeout(function() {
+   TINY.box.hide();
+   self.close();
+  }, 1000);
+}
+// Restores select box state to saved value from localStorage.
+function restore_options() {
+  var addres = localStorage["address"];
+  if (!addres) {
+    return 'http://ro-planet.ro:82/dotproject';
+  }
+ $("input#address").val(addres);
+}
+</script>
+<body onload="restore_options()">
+       <table align="center">
+                    <tr>
+                        <td align="right" class="jmdtext">DotProject Address:</td>
+                        <td align="left">
+                            <input type="text" size="70" maxlength="255" name="address" id="address"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td align="right" valign="bottom">
+                           <input type="button"  value="Save" onclick="save_options()" />
+                        </td>
+                    </tr>
+                </table>
+</body>
+</html>

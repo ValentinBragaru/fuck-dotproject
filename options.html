@@ -27,7 +27,7 @@ function save_options() {
 function restore_options() {
   var addres = localStorage["address"];
   if (!addres) {
-    return 'http://ro-planet.ro:82/dotproject';
+    return 'http://example.com/dotproject';
   }
  $("input#address").val(addres);
 }
